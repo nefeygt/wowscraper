@@ -1,18 +1,17 @@
 import sqlite3
 import time
+import numpy as np
 
 DB_FILE = "wow_auctions.db"
 
 # --- CONFIGURATION ---
-# You can tweak these settings to find different kinds of deals.
-# -----------------------------------------------------------------
-# The minimum ratio between the highest and lowest price to be considered a deal.
-MIN_PRICE_RATIO = 4.0 # Lowered a bit, as results will be less extreme now
+# The minimum ratio between the realistic highest and lowest price.
+MIN_PRICE_RATIO = 3.0
 
 # The minimum price (in gold) for the CHEAPEST version of an item to be included.
 MIN_GOLD_PRICE = 1000
 
-# The item must be available on at least this many different realms.
+# The item must be available on at least this many different realms AFTER cleaning outliers.
 MIN_REALM_COUNT = 5
 
 # How many top deals do you want to see in the final report?
@@ -28,99 +27,110 @@ def format_price(price_in_copper):
     copper = int(price_in_copper % 100)
     return f"{gold}g {silver}s {copper}c"
 
-def analyze_market_improved():
-    """Scans the database using the improved logic to find realistic deals."""
+def analyze_market_final():
+    """Scans the database using statistical outlier rejection to find the best deals."""
     start_time = time.time()
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
-    print("Starting improved market analysis...")
+    print("Starting final market analysis with statistical outlier rejection...")
     
-    # This is our new, more advanced query using a Common Table Expression (CTE).
-    # STEP 1 (the 'WITH' part): Create a temporary table of the minimum price for each item on each realm.
-    # STEP 2 (the 'SELECT' part): Analyze the results from the temporary table.
-    summary_query = """
-        WITH RealmMinPrices AS (
-            SELECT
-                item_id,
-                connected_realm_id,
-                MIN(buyout_price) as min_realm_price
-            FROM
-                auctions
-            WHERE
-                buyout_price IS NOT NULL
-            GROUP BY
-                item_id, connected_realm_id
-        )
+    # Step 1: Get the minimum price for each item on each realm. This is our raw data.
+    raw_prices_query = """
         SELECT
             item_id,
-            MIN(min_realm_price) as overall_min_price,
-            MAX(min_realm_price) as overall_max_price,
-            COUNT(connected_realm_id) as realm_count
+            MIN(buyout_price) as min_realm_price
         FROM
-            RealmMinPrices
+            auctions
+        WHERE
+            buyout_price IS NOT NULL
         GROUP BY
-            item_id;
+            item_id, connected_realm_id;
     """
-    cursor.execute(summary_query)
-    item_summaries = cursor.fetchall()
+    cursor.execute(raw_prices_query)
     
-    print(f"Found {len(item_summaries)} unique items to analyze.")
-    print("Filtering for significant deals based on your refined criteria...")
+    # Group all the minimum prices by item_id in a dictionary
+    item_prices = {}
+    for item_id, price in cursor.fetchall():
+        if item_id not in item_prices:
+            item_prices[item_id] = []
+        item_prices[item_id].append(price)
+
+    print(f"Found {len(item_prices)} unique items. Applying statistical analysis...")
 
     potential_deals = []
-    for item_id, min_price, max_price, realm_count in item_summaries:
-        # Apply our filters
-        if realm_count < MIN_REALM_COUNT:
+    for item_id, prices in item_prices.items():
+        # Ensure we have enough data points to do meaningful stats
+        if len(prices) < MIN_REALM_COUNT:
             continue
-        if min_price < (MIN_GOLD_PRICE * 10000):
+
+        prices_array = np.array(prices)
+        
+        # Step 2: Calculate statistical properties to find outliers
+        q1 = np.percentile(prices_array, 25)
+        q3 = np.percentile(prices_array, 75)
+        iqr = q3 - q1
+        
+        # Define the upper limit for a price to be considered "realistic"
+        # Any price above this is considered a statistical outlier
+        outlier_threshold = q3 + (1.5 * iqr)
+        
+        # Step 3: Filter out the outliers
+        realistic_prices = prices_array[prices_array <= outlier_threshold]
+
+        # Check if we still have enough data after cleaning
+        if len(realistic_prices) < MIN_REALM_COUNT:
             continue
         
-        ratio = max_price / min_price if min_price > 0 else 0
-        
+        # Step 4: Get the min and max from the CLEANED data
+        min_realistic_price = np.min(realistic_prices)
+        max_realistic_price = np.max(realistic_prices)
+
+        # Apply our filters to the cleaned data
+        if min_realistic_price < (MIN_GOLD_PRICE * 10000):
+            continue
+
+        ratio = max_realistic_price / min_realistic_price if min_realistic_price > 0 else 0
+
         if ratio >= MIN_PRICE_RATIO:
             potential_deals.append({
                 "item_id": item_id,
-                "min_price": min_price,
-                "max_price": max_price,
+                "min_price": min_realistic_price,
+                "max_price": max_realistic_price,
                 "ratio": ratio,
             })
 
-    print(f"Found {len(potential_deals)} potential deals. Fetching realm details...")
+    print(f"Found {len(potential_deals)} potential deals after cleaning. Fetching realm details...")
 
+    # Fetch realm details for our finalized deals
     final_deals = []
-    # This part can be slow if there are many deals, we can optimize later if needed
     for deal in potential_deals:
-        # For each deal, find which realm has the min and max price from our list of minimums
         cursor.execute("SELECT connected_realm_id FROM auctions WHERE item_id = ? AND buyout_price = ? LIMIT 1", (deal['item_id'], deal['min_price']))
         min_realm_result = cursor.fetchone()
         
         cursor.execute("SELECT connected_realm_id FROM auctions WHERE item_id = ? AND buyout_price = ? LIMIT 1", (deal['item_id'], deal['max_price']))
         max_realm_result = cursor.fetchone()
         
-        # It's possible for a realm to not be found if the data changes, so we check
         if min_realm_result and max_realm_result:
             deal['min_realm'] = min_realm_result[0]
             deal['max_realm'] = max_realm_result[0]
             final_deals.append(deal)
 
-    # Sort deals by the highest ratio first
     final_deals.sort(key=lambda x: x['ratio'], reverse=True)
-
     end_time = time.time()
     print(f"\nAnalysis complete in {end_time - start_time:.2f} seconds.")
     print("-" * 70)
-    print(f"Top {min(len(final_deals), DEAL_REPORT_LIMIT)} More Realistic Market Opportunities")
+    print(f"Top {min(len(final_deals), DEAL_REPORT_LIMIT)} Statistically Significant Market Opportunities")
     print("-" * 70)
 
     for deal in final_deals[:DEAL_REPORT_LIMIT]:
         print(f"Item ID: {deal['item_id']:<8} | Ratio: {deal['ratio']:.2f}x")
         print(f"  -> Cheapest Realm Low: {format_price(deal['min_price']):<18} (Realm {deal['min_realm']})")
-        print(f"  -> Highest Realm Low:  {format_price(deal['max_price']):<18} (Realm {deal['max_realm']})")
+        print(f"  -> Realistic High Low: {format_price(deal['max_price']):<18} (Realm {deal['max_realm']})")
         print("-" * 70)
         
     conn.close()
 
 
 if __name__ == "__main__":
-    analyze_market_improved()
+    analyze_market_final()
