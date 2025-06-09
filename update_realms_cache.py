@@ -6,8 +6,8 @@ import sqlite3
 load_dotenv()
 
 # --- Configuration ---
-client_id = 'a446f3e402fb474eaeeab49a4ace4fe4' # Add your client ID
-client_secret = os.getenv("SECRET_KEY") # Replace with your secret
+client_id = os.getenv("CLIENT_ID")
+client_secret = os.getenv("SECRET_KEY")
 region = 'eu'
 namespace = f'dynamic-{region}'
 DB_FILE = "wow_auctions.db"

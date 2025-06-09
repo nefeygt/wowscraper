@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS auctions (
 );
 """
 
-# SQL command for our new items cache table
+# SQL command for items cache table
 CREATE_ITEMS_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS items (
     item_id INTEGER PRIMARY KEY,
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS items (
 );
 """
 
-# SQL command for our new realms cache table
+# SQL command for realms cache table
 CREATE_REALMS_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS realms (
     connected_realm_id INTEGER PRIMARY KEY,
