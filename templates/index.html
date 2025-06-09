@@ -55,58 +55,88 @@
             font-size: 1.5rem;
             padding: 3rem;
         }
+        button {
+            background-color: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 0.5rem 1rem;
+            margin: 0 5px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>WoW Auction House Deals</h1>
-        <div id="deals-container">
-            <p class="loading">Loading deals...</p>
-        </div>
+<div class="container">
+    <h1>WoW Auction House Deals</h1>
+    <div id="deals-container">
+        <p class="loading">Loading deals...</p>
     </div>
+</div>
 
-    <script>
-        // This script runs when the page is loaded
-        window.onload = function() {
-            // Fetch the deal data from our own API endpoint
-            fetch('/api/deals')
-                .then(response => response.json())
-                .then(deals => {
-                    const container = document.getElementById('deals-container');
-                    
-                    if (deals.length === 0) {
-                        container.innerHTML = '<p class="loading">No deals found matching the criteria.</p>';
-                        return;
-                    }
+<script>
+    let currentPage = 1;
 
-                    // Start building the HTML for our table
-                    let tableHtml = '<table><thead><tr><th>Item ID</th><th>Ratio</th><th>Cheapest Realm Low</th><th>Realistic High Low</th></tr></thead><tbody>';
+    function loadDeals(page = 1) {
+        const container = document.getElementById('deals-container');
+        container.innerHTML = '<p class="loading">Loading deals...</p>';
 
-                    // Loop through each deal object and create a table row for it
-                    deals.forEach(deal => {
-                        tableHtml += `
-                            <tr>
-                                <td><a class="wowhead-link" href="https://www.wowhead.com/item=${deal.itemId}" target="_blank">${deal.itemId}</a></td>
-                                <td>${deal.ratio}</td>
-                                <td>${deal.minPrice} (Realm ${deal.minRealm})</td>
-                                <td>${deal.maxPrice} (Realm ${deal.maxRealm})</td>
-                            </tr>
-                        `;
-                    });
+        fetch(`/api/deals?page=${page}`)
+            .then(res => res.json())
+            .then(deals => {
+                if (deals.length === 0) {
+                    container.innerHTML = '<p class="loading">No deals found.</p>';
+                    return;
+                }
 
-                    tableHtml += '</tbody></table>';
+                let html = '<table><thead><tr><th>Item</th><th>Ratio</th><th>Cheapest Realm</th><th>Most Expensive Realm</th></tr></thead><tbody>';
 
-                    // Replace the "Loading..." message with our new table
-                    container.innerHTML = tableHtml;
-                })
-                .catch(error => {
-                    console.error('Error fetching deals:', error);
-                    const container = document.getElementById('deals-container');
-                    container.innerHTML = '<p class="loading">Error: Could not load deal data.</p>';
+                deals.forEach(deal => {
+                    html += `
+                        <tr>
+                            <td>
+                                <img src="${deal.itemIcon}" alt="" style="height:20px;vertical-align:middle;margin-right:5px;">
+                                <a class="wowhead-link" href="https://www.wowhead.com/item=${deal.itemId}" target="_blank">${deal.itemName}</a>
+                            </td>
+                            <td>${deal.ratio}</td>
+                            <td>${deal.minPrice} (${deal.minRealm})</td>
+                            <td>${deal.maxPrice} (${deal.maxRealm})</td>
+                        </tr>
+                    `;
                 });
-        };
-    </script>
+
+                html += '</tbody></table>';
+                html += `
+                    <div style="text-align:center;margin-top:1rem;">
+                        <button onclick="prevPage()" ${page === 1 ? 'disabled' : ''}>← Prev</button>
+                        <span style="margin: 0 10px;">Page ${page}</span>
+                        <button onclick="nextPage()">Next →</button>
+                    </div>
+                `;
+                container.innerHTML = html;
+                currentPage = page;
+            })
+            .catch(err => {
+                console.error('Error fetching deals:', err);
+                container.innerHTML = '<p class="loading">Error loading data.</p>';
+            });
+    }
+
+    function prevPage() {
+        if (currentPage > 1) loadDeals(currentPage - 1);
+    }
+
+    function nextPage() {
+        loadDeals(currentPage + 1);
+    }
+
+    window.onload = () => loadDeals();
+</script>
 
 </body>
 </html>
