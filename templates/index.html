@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WoW Auction Scanner Deals</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+        h1 {
+            text-align: center;
+            color: #bb86fc;
+            border-bottom: 2px solid #333;
+            padding-bottom: 0.5rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2rem;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+        thead {
+            background-color: #bb86fc;
+            color: #121212;
+        }
+        tr:nth-of-type(even) {
+            background-color: #1e1e1e;
+        }
+        tr:hover {
+            background-color: #333;
+        }
+        .wowhead-link {
+            color: #ffd100;
+            text-decoration: none;
+        }
+        .wowhead-link:hover {
+            text-decoration: underline;
+        }
+        .loading {
+            text-align: center;
+            font-size: 1.5rem;
+            padding: 3rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>WoW Auction House Deals</h1>
+        <div id="deals-container">
+            <p class="loading">Loading deals...</p>
+        </div>
+    </div>
+
+    <script>
+        // This script runs when the page is loaded
+        window.onload = function() {
+            // Fetch the deal data from our own API endpoint
+            fetch('/api/deals')
+                .then(response => response.json())
+                .then(deals => {
+                    const container = document.getElementById('deals-container');
+                    
+                    if (deals.length === 0) {
+                        container.innerHTML = '<p class="loading">No deals found matching the criteria.</p>';
+                        return;
+                    }
+
+                    // Start building the HTML for our table
+                    let tableHtml = '<table><thead><tr><th>Item ID</th><th>Ratio</th><th>Cheapest Realm Low</th><th>Realistic High Low</th></tr></thead><tbody>';
+
+                    // Loop through each deal object and create a table row for it
+                    deals.forEach(deal => {
+                        tableHtml += `
+                            <tr>
+                                <td><a class="wowhead-link" href="https://www.wowhead.com/item=${deal.itemId}" target="_blank">${deal.itemId}</a></td>
+                                <td>${deal.ratio}</td>
+                                <td>${deal.minPrice} (Realm ${deal.minRealm})</td>
+                                <td>${deal.maxPrice} (Realm ${deal.maxRealm})</td>
+                            </tr>
+                        `;
+                    });
+
+                    tableHtml += '</tbody></table>';
+
+                    // Replace the "Loading..." message with our new table
+                    container.innerHTML = tableHtml;
+                })
+                .catch(error => {
+                    console.error('Error fetching deals:', error);
+                    const container = document.getElementById('deals-container');
+                    container.innerHTML = '<p class="loading">Error: Could not load deal data.</p>';
+                });
+        };
+    </script>
+
+</body>
+</html>
