@@ -1,34 +1,53 @@
 import sqlite3
 
-# The name of our database file.
 DB_FILE = "wow_auctions.db"
 
-# SQL command to create our table.
-# We use "IF NOT EXISTS" so we can run this script multiple times without error.
-CREATE_TABLE_SQL = """
+# SQL command for the main auctions table (unchanged)
+CREATE_AUCTIONS_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS auctions (
-    id INTEGER PRIMARY KEY,         -- Unique ID for each auction listing
-    item_id INTEGER NOT NULL,       -- The ID of the item being sold
-    connected_realm_id INTEGER NOT NULL, -- The realm ID where the auction is
-    buyout_price INTEGER,           -- The buyout price in total copper (can be NULL for bids)
-    quantity INTEGER NOT NULL,      -- The stack size of the auction
-    time_left TEXT NOT NULL,        -- e.g., "SHORT", "LONG"
-    scan_timestamp DATETIME NOT NULL -- The date and time we scanned this data
+    id INTEGER PRIMARY KEY,
+    item_id INTEGER NOT NULL,
+    connected_realm_id INTEGER NOT NULL,
+    buyout_price INTEGER,
+    quantity INTEGER NOT NULL,
+    time_left TEXT NOT NULL,
+    scan_timestamp DATETIME NOT NULL
 );
 """
 
+# SQL command for our new items cache table
+CREATE_ITEMS_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS items (
+    item_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    quality TEXT NOT NULL,
+    icon_url TEXT NOT NULL
+);
+"""
+
+# SQL command for our new realms cache table
+CREATE_REALMS_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS realms (
+    connected_realm_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+"""
+
+
 try:
-    # Connect to the database. If the file doesn't exist, it will be created.
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
     print(f"Successfully connected to database file: {DB_FILE}")
 
-    # Execute the SQL command to create the table.
-    cursor.execute(CREATE_TABLE_SQL)
-    print("'auctions' table created or already exists.")
+    # Execute the SQL commands to create the tables
+    cursor.execute(CREATE_AUCTIONS_TABLE_SQL)
+    print("'auctions' table checked.")
+    cursor.execute(CREATE_ITEMS_TABLE_SQL)
+    print("'items' table created or already exists.")
+    cursor.execute(CREATE_REALMS_TABLE_SQL)
+    print("'realms' table created or already exists.")
     
-    # Commit the changes and close the connection.
     conn.commit()
     conn.close()
 
