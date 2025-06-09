@@ -10,6 +10,7 @@ MIN_PRICE_RATIO = 3.0
 MIN_GOLD_PRICE = 1000
 MIN_REALM_COUNT = 5
 DEAL_REPORT_LIMIT = 25
+MAX_REALISTIC_GOLD_PRICE = 3000000 # Ignore any "max price" above 3 million gold
 # -----------------------------------------------------------------
 
 
@@ -86,6 +87,10 @@ def analyze_market_optimized():
             continue
             
         ratio = max_price / min_price if min_price > 0 else 0
+        
+        # ADD THIS BLOCK: Final hard cap to filter extreme outliers
+        if max_price > (MAX_REALISTIC_GOLD_PRICE * 10000):
+            continue
         
         if ratio >= MIN_PRICE_RATIO:
             final_deals.append({
