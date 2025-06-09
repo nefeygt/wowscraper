@@ -77,7 +77,7 @@ def analyze_market_optimized():
             continue
             
         # Step 4: Find the min and max from the CLEANED data
-        # We sort the cleaned list by price to easily find the min and max
+        # Sort the cleaned list by price to easily find the min and max
         realistic_data.sort(key=lambda x: x[0])
         min_price, min_realm = realistic_data[0]
         max_price, max_realm = realistic_data[-1]
@@ -88,7 +88,7 @@ def analyze_market_optimized():
             
         ratio = max_price / min_price if min_price > 0 else 0
         
-        # ADD THIS BLOCK: Final hard cap to filter extreme outliers
+        # Final hard cap to filter extreme outliers
         if max_price > (MAX_REALISTIC_GOLD_PRICE * 10000):
             continue
         
