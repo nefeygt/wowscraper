@@ -5,8 +5,8 @@ import requests
 load_dotenv()
 
 # --- Configuration ---
-client_id = 'a446f3e402fb474eaeeab49a4ace4fe4'
-client_secret = os.getenv("SECRET_KEY") # Replace with the secret you received
+client_id = os.getenv("CLIENT_ID")
+client_secret = os.getenv("SECRET_KEY")
 region = 'eu'
 namespace = f'dynamic-{region}'
 locale = 'en_US'

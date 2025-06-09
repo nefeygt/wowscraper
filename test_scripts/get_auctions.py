@@ -5,18 +5,16 @@ import requests
 load_dotenv()
 
 # --- Configuration ---
-client_id = 'a446f3e402fb474eaeeab49a4ace4fe4'
-client_secret = os.getenv("SECRET_KEY") # Replace with your secret
+client_id = os.getenv("CLIENT_ID")
+client_secret = os.getenv("SECRET_KEY")
 region = 'eu'
 namespace = f'dynamic-{region}'
 locale = 'en_US'
 
 # --- The ID of the realm we want to scan ---
-# We're using the first one from your list as an example.
 target_realm_id = 1080 
 
 # --- Step 1: Get Access Token ---
-# (This part is the same as before)
 token_url = f'https://{region}.oauth.battle.net/token'
 token_payload = {'grant_type': 'client_credentials'}
 
@@ -60,7 +58,7 @@ try:
             buyout_price = auction.get('buyout')
             time_left = auction.get('time_left')
             
-            # Buyout price is in copper. Let's format it for readability.
+            # Buyout price is in copper. Formatting it for readability.
             if buyout_price:
                 gold = int(buyout_price / 10000)
                 silver = int((buyout_price % 10000) / 100)

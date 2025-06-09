@@ -4,9 +4,9 @@ import requests
 
 load_dotenv()
 
-# --- Replace these with your actual Client ID and Client Secret ---
-client_id = 'a446f3e402fb474eaeeab49a4ace4fe4'
-client_secret = os.getenv("SECRET_KEY") # Replace with the secret you received
+# ----------------------------------------------------------------
+client_id = os.getenv("CLIENT_ID")
+client_secret = os.getenv("SECRET_KEY")
 # ----------------------------------------------------------------
 
 # The Blizzard API endpoint for generating an access token
