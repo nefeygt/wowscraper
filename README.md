@@ -52,8 +52,8 @@ This project scrapes World of Warcraft auction house data using the Blizzard API
         ```properties
         // filepath: .env
         SECRET_KEY=YOUR_BLIZZARD_API_CLIENT_SECRET
+        CLIENT_ID=YOUR_BLIZZARD_API_CLIENT_ID # Not private, globally unique
         ```
-    *   Update `client_id` in `scanner.py`, `update_realms_cache.py`, etc., if it's not hardcoded as `'a446f3e402fb474eaeeab49a4ace4fe4'`.
 
 ## Running the Application
 
