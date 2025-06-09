@@ -30,7 +30,6 @@ def get_deals_page(page=1, page_size=25):
     try:
         conn = sqlite3.connect(f"file:{DB_FILE}?mode=ro", uri=True)
         cursor = conn.cursor()
-
         raw_prices_query = """
             SELECT item_id, connected_realm_id, MIN(buyout_price)
             FROM auctions
@@ -55,20 +54,30 @@ def get_deals_page(page=1, page_size=25):
         if len(price_realm_tuples) < MIN_REALM_COUNT:
             continue
 
-        prices = [p for p, _ in price_realm_tuples]
-        q1, q3 = np.percentile(prices, [25, 75])
+        prices_array = np.array([p for p, _ in price_realm_tuples])
+        q1 = np.percentile(prices_array, 25)
+        q3 = np.percentile(prices_array, 75)
         iqr = q3 - q1
-        threshold = q3 + 1.5 * iqr
+        outlier_threshold = q3 + (1.5 * iqr)
 
-        realistic = [t for t in price_realm_tuples if t[0] <= threshold]
-        if len(realistic) < MIN_REALM_COUNT:
+        realistic_data = [t for t in price_realm_tuples if t[0] <= outlier_threshold]
+        if realistic_data:
+            median_price = np.median([t[0] for t in realistic_data])
+            mad = np.median(np.abs([t[0] - median_price for t in realistic_data])) or 1
+            mad_threshold = 5 * mad
+            realistic_data = [
+                t for t in realistic_data
+                if abs(t[0] - median_price) <= mad_threshold
+            ]
+
+        if len(realistic_data) < MIN_REALM_COUNT:
             continue
 
-        realistic.sort(key=lambda x: x[0])
-        min_price, min_realm = realistic[0]
-        max_price, max_realm = realistic[-1]
+        realistic_data.sort(key=lambda x: x[0])
+        min_price, min_realm = realistic_data[0]
+        max_price, max_realm = realistic_data[-1]
 
-        if not (MIN_GOLD_PRICE * 10000 <= min_price <= MAX_REALISTIC_GOLD_PRICE * 10000):
+        if min_price < (MIN_GOLD_PRICE * 10000) or max_price > (MAX_REALISTIC_GOLD_PRICE * 10000):
             continue
 
         ratio = max_price / min_price
@@ -90,12 +99,12 @@ def get_deals_page(page=1, page_size=25):
             item_name, icon_url = item_row if item_row else ("Unknown", "")
 
             cursor.execute("SELECT name FROM realms WHERE connected_realm_id = ?", (min_realm,))
-            min_realm_name = cursor.fetchone()
-            min_realm_name = min_realm_name[0] if min_realm_name else str(min_realm)
+            min_realm_name_row = cursor.fetchone()
+            min_realm_name = min_realm_name_row[0] if min_realm_name_row else str(min_realm)
 
             cursor.execute("SELECT name FROM realms WHERE connected_realm_id = ?", (max_realm,))
-            max_realm_name = cursor.fetchone()
-            max_realm_name = max_realm_name[0] if max_realm_name else str(max_realm)
+            max_realm_name_row = cursor.fetchone()
+            max_realm_name = max_realm_name_row[0] if max_realm_name_row else str(max_realm)
 
             final_results.append({
                 "itemId": item_id,
